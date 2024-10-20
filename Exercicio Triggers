@@ -1,0 +1,85 @@
+--EXERCICIO 1
+
+
+create table produto (
+    cod_prod serial primary key,
+    descricao text,
+    qtd_disponivel int
+);
+
+create table ItensVenda (
+    cod_venda serial primary key,
+    id_produto int,
+    qtd_vendida int,
+    foreign key (id_produto) references produto(cod_prod)
+);
+
+insert into produto (descricao, qtd_disponivel) VALUES ('Coisa1', 100),('Coisa2', 200);
+
+
+create or replace function funcao()
+returns trigger as 
+$$
+begin
+ 
+  if (select qtd_disponivel from produto where cod_prod = new.id_produto) < new.qtd_vendida then
+    raise exception 'Erro de quantidade';
+  else
+    update produto
+    set qtd_disponivel = qtd_disponivel - new.qtd_vendida
+    where cod_prod = new.id_produto;
+  end if;
+
+  return new;
+end;
+$$ 
+language plpgsql;
+
+
+create trigger teste after insert on ItensVenda
+for each row execute function funcao();
+
+select * from produto;
+
+insert into ItensVenda (id_produto, qtd_vendida) VALUES (2, 25);
+insert into ItensVenda (id_produto, qtd_vendida) VALUES (2, 250); --teste pra ver se nao deixa botar venda maior que estoque
+
+select * from produto;
+
+--EXERCICIO 2
+
+create table tb_usuarios (
+    id serial primary key,
+    nome varchar(255),
+    senha varchar(255)
+);
+
+create table tb_bkp_usuarios (
+    id serial primary key,
+    nome varchar(255),
+    senha varchar(255)
+);
+
+insert into tb_usuarios(nome, senha) values ('Eu', '123'), ('Voce', '321');
+
+create or replace function backup()
+returns trigger as 
+$$
+begin
+    insert into tb_bkp_usuarios (id, nome, senha)
+    values (old.id, old.nome, old.senha);
+    return old;
+end;
+$$
+language plpgsql;
+
+create trigger backup_trigger before delete on tb_usuarios
+for each row execute function backup();
+
+select * from tb_usuarios;
+
+delete from tb_usuarios where id = 1;
+
+select * from tb_usuarios;
+
+select * from tb_bkp_usuarios;
